@@ -95,47 +95,41 @@ st.divider()
 if section.startswith("1"):
     st.subheader("Save New Location")
 
-    col1, col2 = st.columns(2)
-    with col1:
-        selected_date = st.date_input("Select Date", value=date.today())
-    with col2:
-        location_name = st.text_input("Location Name", placeholder="e.g. Home, Office, Site A")
-
     captured = st.session_state.get("captured_location")
     loc_error = st.session_state.get("location_error")
 
-    if captured:
-        st.success(
-            f"Location captured — Lat: {captured['latitude']:.6f}, "
-            f"Lon: {captured['longitude']:.6f}"
-        )
-        st.map(pd.DataFrame([{"lat": captured["latitude"], "lon": captured["longitude"]}]))
-    elif loc_error:
-        if loc_error.get("code") == 1:
-            st.error("Location permission was denied. Please enable location access for this "
-                      "site in your browser settings and reload the page.")
-        else:
+    if not captured:
+        # Location not granted/captured yet — ask for it first and don't show
+        # the form until we actually have it.
+        if loc_error and loc_error.get("code") == 1:
+            st.error("Location permission was denied. Please turn on location access for this "
+                      "site in your phone's browser settings, then reload the page.")
+        elif loc_error:
             st.warning(f"Couldn't get your location: {loc_error.get('message', 'unknown error')}")
-    else:
-        st.warning("Waiting for location permission — please allow location access "
-                    "when your browser asks, then wait a moment for it to appear.")
-
-    save_clicked = st.button("💾 Save to Google Sheet", type="primary", use_container_width=True)
-
-    if save_clicked:
-        if not location_name.strip():
-            st.error("Please enter a location name.")
-        elif not captured:
-            st.error("Location not captured yet. Please allow location access when prompted, "
-                      "then try again.")
         else:
-            try:
-                save_row(selected_date, location_name.strip(), captured["latitude"], captured["longitude"])
-                st.success("✅ Saved to Google Sheet!")
-                del st.session_state["captured_location"]
-                st.rerun()
-            except Exception as e:
-                st.error(f"Failed to save: {e}")
+            st.info("📡 Please turn on Location on your phone and allow access when your "
+                     "browser asks — the form will appear once your location is detected.")
+    else:
+        # Location already captured in the background — show the form.
+        col1, col2 = st.columns(2)
+        with col1:
+            selected_date = st.date_input("Select Date", value=date.today())
+        with col2:
+            location_name = st.text_input("Location Name", placeholder="e.g. Home, Office, Site A")
+
+        save_clicked = st.button("💾 Save to Google Sheet", type="primary", use_container_width=True)
+
+        if save_clicked:
+            if not location_name.strip():
+                st.error("Please enter a location name.")
+            else:
+                try:
+                    save_row(selected_date, location_name.strip(), captured["latitude"], captured["longitude"])
+                    st.success("✅ Saved to Google Sheet!")
+                    del st.session_state["captured_location"]
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Failed to save: {e}")
 
 # ------------------------------------------------------------------
 # SECTION 2 — VIEW LOCATION BY TIME

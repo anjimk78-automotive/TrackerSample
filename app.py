@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
-from streamlit_geolocation import streamlit_geolocation
+from streamlit_js_eval import get_geolocation
 from datetime import datetime, date
 
 # ----------------------------------------------------------------------
@@ -90,15 +90,14 @@ if section.startswith("1"):
     with col2:
         location_name = st.text_input("Location Name", placeholder="e.g. Home, Office, Site A")
 
-    st.write("Tap the pin below on your phone to capture your current GPS position "
-             "(allow location access when your browser asks):")
+    # Automatically asks the browser for location permission as soon as the
+    # page loads (the phone/browser shows its native "Allow location?" prompt).
+    location = get_geolocation()
 
-    location = streamlit_geolocation()
-
-    if location and location.get("latitude") is not None:
+    if location and location.get("coords"):
         st.session_state["captured_location"] = {
-            "latitude": location["latitude"],
-            "longitude": location["longitude"],
+            "latitude": location["coords"]["latitude"],
+            "longitude": location["coords"]["longitude"],
         }
 
     captured = st.session_state.get("captured_location")
@@ -110,7 +109,8 @@ if section.startswith("1"):
         )
         st.map(pd.DataFrame([{"lat": captured["latitude"], "lon": captured["longitude"]}]))
     else:
-        st.info("No location captured yet. Tap the pin above.")
+        st.warning("Waiting for location permission — please allow location access "
+                    "when your browser asks, then wait a moment for it to appear.")
 
     save_clicked = st.button("💾 Save to Google Sheet", type="primary", use_container_width=True)
 
@@ -118,7 +118,8 @@ if section.startswith("1"):
         if not location_name.strip():
             st.error("Please enter a location name.")
         elif not captured:
-            st.error("Please capture your GPS location first (tap the pin above).")
+            st.error("Location not captured yet. Please allow location access when prompted, "
+                      "then try again.")
         else:
             try:
                 save_row(selected_date, location_name.strip(), captured["latitude"], captured["longitude"])

@@ -1,5 +1,5 @@
 streamlit>=1.36.0
 gspread>=6.1.2
 google-auth>=2.29.0
-streamlit-geolocation>=0.0.10
+streamlit-js-eval>=0.1.7
 pandas>=2.0.0

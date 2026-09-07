@@ -70,6 +70,17 @@ def save_row(row_date: date, location_name: str, lat: float, lon: float):
 st.title("📍 Location Tracker")
 st.caption("Capture your live GPS location on mobile and save it to Google Sheets.")
 
+# Always call get_geolocation() at the top level, outside any if/else branch —
+# the component is known to misbehave when called from inside a conditional block.
+_location = get_geolocation()
+if _location and _location.get("coords"):
+    st.session_state["captured_location"] = {
+        "latitude": _location["coords"]["latitude"],
+        "longitude": _location["coords"]["longitude"],
+    }
+elif _location and "error" in _location:
+    st.session_state["location_error"] = _location["error"]
+
 section = st.radio(
     "Choose section",
     ["1️⃣ Save a location", "2️⃣ View a saved location"],
@@ -90,17 +101,8 @@ if section.startswith("1"):
     with col2:
         location_name = st.text_input("Location Name", placeholder="e.g. Home, Office, Site A")
 
-    # Automatically asks the browser for location permission as soon as the
-    # page loads (the phone/browser shows its native "Allow location?" prompt).
-    location = get_geolocation()
-
-    if location and location.get("coords"):
-        st.session_state["captured_location"] = {
-            "latitude": location["coords"]["latitude"],
-            "longitude": location["coords"]["longitude"],
-        }
-
     captured = st.session_state.get("captured_location")
+    loc_error = st.session_state.get("location_error")
 
     if captured:
         st.success(
@@ -108,6 +110,12 @@ if section.startswith("1"):
             f"Lon: {captured['longitude']:.6f}"
         )
         st.map(pd.DataFrame([{"lat": captured["latitude"], "lon": captured["longitude"]}]))
+    elif loc_error:
+        if loc_error.get("code") == 1:
+            st.error("Location permission was denied. Please enable location access for this "
+                      "site in your browser settings and reload the page.")
+        else:
+            st.warning(f"Couldn't get your location: {loc_error.get('message', 'unknown error')}")
     else:
         st.warning("Waiting for location permission — please allow location access "
                     "when your browser asks, then wait a moment for it to appear.")
